@@ -1,20 +1,28 @@
 import { createLogger } from '@narada/shared';
-import { createTestDatabase, resetDatabase } from '@narada/test-utils';
+import { createTempBlobStore, createTestDatabase, resetDatabase } from '@narada/test-utils';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from './app';
 
 const handle = createTestDatabase();
+const blobs = createTempBlobStore();
+const appDeps = () => ({
+  db: handle.db,
+  logger: createLogger({ name: 'api-test', level: 'silent' }),
+  blobs: blobs.store,
+  maxUploadBytes: 1024 * 1024,
+});
 let app: FastifyInstance;
 
 beforeAll(async () => {
-  app = await buildApp({ db: handle.db, logger: createLogger({ name: 'api-test', level: 'silent' }) });
+  app = await buildApp(appDeps());
   await app.ready();
 });
 beforeEach(() => resetDatabase(handle.db));
 afterAll(async () => {
   await app.close();
   await handle.close();
+  blobs.cleanup();
 });
 
 const validSource = {
@@ -120,7 +128,7 @@ describe('POST /v1/sources', () => {
   it('does not leak internals on unexpected errors', async () => {
     const broken = createTestDatabase();
     await broken.close(); // pool is closed: any query will now fail
-    const failing = await buildApp({ db: broken.db, logger: createLogger({ name: 'api-test', level: 'silent' }) });
+    const failing = await buildApp({ ...appDeps(), db: broken.db });
     const res = await failing.inject({ method: 'POST', url: '/v1/sources', payload: validSource });
     expect(res.statusCode).toBe(500);
     expect(res.json().error).toMatchObject({ code: 'INTERNAL_ERROR', message: 'An internal error occurred.' });

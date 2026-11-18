@@ -7,3 +7,7 @@ local-filesystem implementation ships first. The client filename is stored as me
 
 **Why.** Provenance requires the exact original bytes; content addressing makes writes idempotent and removes
 path-traversal risk; the interface allows S3 later.
+
+**Update (M2).** Because keys are content hashes, two sources may legitimately reference the same blob. The original
+`document_versions.storage_key UNIQUE` constraint was therefore wrong and was dropped (migration 0002). Reads verify the bytes
+against the key and raise `BLOB_INTEGRITY_ERROR` on mismatch; writes go through a temp file and rename.

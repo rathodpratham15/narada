@@ -1,14 +1,19 @@
 import type { Database } from '@narada/database';
 import type { Logger } from '@narada/shared';
+import type { BlobStore } from '@narada/storage';
 import Fastify, { LogController, type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { registerErrorHandling } from './error-handler';
+import { documentRoutes } from './routes/documents';
 import { healthRoutes } from './routes/health';
 import { sourceRoutes } from './routes/sources';
 
 export interface AppDeps {
   db: Database;
   logger: Logger;
+  /** Where original uploads are preserved. */
+  blobs: BlobStore;
+  maxUploadBytes: number;
 }
 
 const SAFE_REQUEST_ID = /^[A-Za-z0-9._-]{1,64}$/;
@@ -34,6 +39,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
   await app.register(healthRoutes, { db: deps.db });
   await app.register(sourceRoutes, { db: deps.db });
+  await app.register(documentRoutes, { db: deps.db, blobs: deps.blobs, maxUploadBytes: deps.maxUploadBytes });
 
   return app;
 }

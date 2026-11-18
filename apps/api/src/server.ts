@@ -1,6 +1,7 @@
 import { ConfigError, loadApiConfig, loadDotEnv } from '@narada/config';
 import { createDatabase } from '@narada/database';
 import { createLogger } from '@narada/shared';
+import { LocalBlobStore } from '@narada/storage';
 import { buildApp } from './app';
 
 const SHUTDOWN_TIMEOUT_MS = 10_000;
@@ -22,7 +23,8 @@ async function main(): Promise<void> {
   const handle = createDatabase(config.DATABASE_URL, {
     onPoolError: (error) => logger.error({ err: error }, 'Idle database connection error'),
   });
-  const app = await buildApp({ db: handle.db, logger });
+  const blobs = new LocalBlobStore(config.BLOB_STORE_DIR);
+  const app = await buildApp({ db: handle.db, logger, blobs, maxUploadBytes: config.MAX_UPLOAD_BYTES });
 
   let shuttingDown = false;
   const shutdown = async (signal: string): Promise<void> => {

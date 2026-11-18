@@ -15,6 +15,20 @@
       "when": 1795039654565,
       "tag": "0001_initial_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795042439172,
+      "tag": "0002_chunk_provenance",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795043418181,
+      "tag": "0003_page_relative_offsets",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,10 @@
+{
+  "name": "@narada/ingestion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc --noEmit -p tsconfig.json" },
+  "dependencies": { "@narada/database": "workspace:*", "@narada/shared": "workspace:*", "@narada/source-registry": "workspace:*", "@narada/storage": "workspace:*", "drizzle-orm": "^0.45.4", "mdast-util-frontmatter": "^2.0.1", "mdast-util-from-markdown": "^2.1.0", "mdast-util-gfm": "^3.1.0", "mdast-util-to-string": "^4.0.0", "micromark-extension-frontmatter": "^2.0.0", "micromark-extension-gfm": "^3.0.0", "pdfjs-dist": "6.5.438" },
+  "devDependencies": { "@narada/test-utils": "workspace:*", "@types/mdast": "^4.0.4" }
+}

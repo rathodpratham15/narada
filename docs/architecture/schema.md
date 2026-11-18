@@ -60,11 +60,12 @@ Immutable once written (except extraction summary fields set by the worker).
 | byte_size | bigint NOT NULL | CHECK > 0 |
 | mime_type | text NOT NULL | validated by sniffing, not trusted from client |
 | original_filename | text NULL | metadata only, never used as a path |
-| storage_key | text NOT NULL UNIQUE | blob address of the untouched original |
+| storage_key | text NOT NULL | blob address of the untouched original. **Not unique:** identical bytes under two sources share one content-addressed blob (migration 0002) |
 | page_count | integer NULL | set by extraction |
 | extracted_title | text NULL | set by extraction |
 | detected_language | text NULL | set by extraction, with `detected_language_confidence real NULL` |
-| extraction_meta | jsonb NULL | extractor name/version, warnings |
+| extraction_meta | jsonb NULL | `{method, status: ok\|failed, warnings[], pages{total,text,blank[],imageOnly[]}, offsetBasis, encoding, author}`; on failure also `error{code,message,details}` |
+| chunking_config | jsonb NULL | exact chunking settings that produced the stored chunks: `{chunkerVersion, targetTokens, maxTokens, overlapTokens, tokenCounter}` |
 | created_at | timestamptz | |
 
 Indexes: `UNIQUE (document_id, version_number)`, `UNIQUE (source_id, content_sha256)` ← idempotency key.
@@ -82,12 +83,26 @@ Indexes: `UNIQUE (document_id, version_number)`, `UNIQUE (source_id, content_sha
 | token_estimate | integer NOT NULL | |
 | page_start, page_end | integer NULL | CHECK `page_end >= page_start` |
 | heading_path | text[] NOT NULL DEFAULT '{}' | e.g. `{"Chapter 2","Section 2.1"}` |
-| locator | jsonb NOT NULL | discriminated union, see overview |
+| section_id | text NULL | ordinal path derived from heading order, e.g. `1.2.1`; null before the first heading |
+| char_start, char_end | integer NULL | UTF-16 offsets of the **blocks** the chunk draws from (block granularity, not exact characters) |
+| offset_basis | text NULL | `document_text` (offsets into the decoded source text, BOM removed) or `page_text` (page-relative, see below) |
+| extraction_method | text NOT NULL | e.g. `pdf-text@1.0.0+pdfjs-6.5.438` |
+| chunker_version | text NOT NULL | e.g. `structural-v1` |
+| chunking_config_hash | text NOT NULL | 16-hex hash of the chunking configuration and token counter name |
+| locator | jsonb NOT NULL | discriminated union: `page`, `page_range`, `text_range` produced today; `section`, `verse`, `commentary` reserved |
 | language | text NULL | |
 | content_tsv | tsvector GENERATED ALWAYS AS (to_tsvector('simple', content)) STORED | |
 | created_at | timestamptz | |
 
 Indexes: `UNIQUE (document_version_id, chunk_index)`, GIN on `content_tsv`, btree on `source_id`, `document_id`.
+
+Offset constraints (migration 0003): `chunks_offsets_paired`: `char_start`, `char_end` and `offset_basis` are all null or all
+set. `chunks_offsets_valid`: both non-negative, and `char_end >= char_start` **unless** `offset_basis = 'page_text'` and
+`page_end > page_start`. For paged documents, offsets are relative to each page's own text, so a chunk spanning pages starts
+on page N and ends on a later page, and its end offset can legitimately be smaller than its start offset.
+
+Chunk ids are **deterministic** UUIDs derived from `(document_version_id, chunker_version, config_hash, chunk_index,
+content_sha256)`, so reprocessing identical input yields identical rows.
 
 ## embedding_models
 
@@ -139,3 +154,14 @@ Constraints:
 - `CHECK (status <> 'COMPLETED' OR finished_at IS NOT NULL)`
 - Partial unique index `ON (document_version_id) WHERE status IN ('PENDING','PROCESSING')`: at most one active job per version.
 - Index on `(status, heartbeat_at)` for the stuck-job sweeper.
+
+## Migration history
+
+| Migration | Purpose |
+|---|---|
+| `0000_enable_pgvector` | `CREATE EXTENSION vector` (hand-written) |
+| `0001_initial_schema` | All M1 tables, enums, constraints, indexes |
+| `0002_chunk_provenance` | Chunk provenance columns (section, offsets, extraction method, chunker version, config hash), `document_versions.chunking_config`, drops `storage_key` uniqueness. The three `NOT NULL` columns use a temporary default so the migration also succeeds on databases that already hold chunks |
+| `0003_page_relative_offsets` | Replaces `chunks_offsets_consistent` with `chunks_offsets_paired` + `chunks_offsets_valid` (cross-page chunks). Found by running a real PDF through the pipeline |
+
+Applied migrations are never edited; changes are always new migrations.

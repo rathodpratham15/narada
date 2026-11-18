@@ -12,7 +12,8 @@
   "dependencies": {
     "@narada/database": "workspace:*",
     "drizzle-orm": "^0.45.4",
-    "@narada/shared": "workspace:*"
+    "@narada/shared": "workspace:*",
+    "@narada/storage": "workspace:*"
   },
   "devDependencies": {}
 }

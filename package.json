@@ -18,7 +18,8 @@
     "infra:reset": "docker compose -f infra/docker/docker-compose.yml down -v",
     "db:generate": "pnpm --filter @narada/database generate",
     "db:migrate": "pnpm --filter @narada/database migrate",
-    "dev:api": "pnpm --filter @narada/api dev"
+    "dev:api": "pnpm --filter @narada/api dev",
+    "dev:worker": "pnpm --filter @narada/ingestion-worker dev"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

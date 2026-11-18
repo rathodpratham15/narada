@@ -66,6 +66,24 @@ export const appErrors = {
       { details: { sourceId } },
     ),
 
+  invalidFileType: (message: string, details?: Record<string, unknown>) =>
+    new AppError('INVALID_FILE_TYPE', message, 400, details ? { details } : {}),
+
+  fileTooLarge: (maxBytes: number) =>
+    new AppError('FILE_TOO_LARGE', `The file exceeds the maximum upload size of ${maxBytes} bytes.`, 413, {
+      details: { maxBytes },
+    }),
+
+  checksumMismatch: (expected: string, actual: string) =>
+    new AppError(
+      'CHECKSUM_MISMATCH',
+      'The uploaded file does not match the content checksum declared on its source.',
+      400,
+      { details: { expected, actual } },
+    ),
+
+  retryNotAllowed: (message: string) => new AppError('RETRY_NOT_ALLOWED', message, 409),
+
   internal: (cause?: unknown) =>
     new AppError('INTERNAL_ERROR', 'An internal error occurred.', 500, { cause }),
 };

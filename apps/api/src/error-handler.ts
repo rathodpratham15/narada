@@ -47,6 +47,10 @@ export function registerErrorHandling(app: FastifyInstance): void {
       });
     }
 
+    if ((error as FastifyError).code === 'FST_REQ_FILE_TOO_LARGE') {
+      return send(reply, request, 413, 'FILE_TOO_LARGE', 'The uploaded file exceeds the maximum upload size.');
+    }
+
     const statusCode = (error as FastifyError).statusCode;
     if (typeof statusCode === 'number' && statusCode >= 400 && statusCode < 500) {
       // Framework-level client errors (malformed JSON, unsupported media type, body too large, …).

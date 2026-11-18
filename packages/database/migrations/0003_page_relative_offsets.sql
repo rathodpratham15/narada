@@ -1,0 +1,3 @@
+ALTER TABLE "chunks" DROP CONSTRAINT "chunks_offsets_consistent";--> statement-breakpoint
+ALTER TABLE "chunks" ADD CONSTRAINT "chunks_offsets_paired" CHECK (("chunks"."char_start" is null) = ("chunks"."char_end" is null) and ("chunks"."char_start" is null) = ("chunks"."offset_basis" is null));--> statement-breakpoint
+ALTER TABLE "chunks" ADD CONSTRAINT "chunks_offsets_valid" CHECK ("chunks"."char_start" is null or ("chunks"."char_start" >= 0 and "chunks"."char_end" >= 0 and ("chunks"."char_end" >= "chunks"."char_start" or ("chunks"."offset_basis" = 'page_text' and "chunks"."page_end" > "chunks"."page_start"))));

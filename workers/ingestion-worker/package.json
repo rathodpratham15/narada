@@ -1,0 +1,25 @@
+{
+  "name": "@narada/ingestion-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "start": "tsx src/main.ts",
+    "dev": "tsx watch src/main.ts"
+  },
+  "dependencies": {
+    "@narada/config": "workspace:*",
+    "@narada/database": "workspace:*",
+    "@narada/ingestion": "workspace:*",
+    "@narada/shared": "workspace:*",
+    "@narada/storage": "workspace:*"
+  },
+  "devDependencies": {
+    "@narada/test-utils": "workspace:*",
+    "drizzle-orm": "^0.45.4"
+  }
+}

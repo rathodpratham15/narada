@@ -71,6 +71,7 @@ export type TitleOrigin = (typeof TITLE_ORIGINS)[number];
 export type ChunkLocator =
   | { kind: 'page'; page: number }
   | { kind: 'page_range'; pageStart: number; pageEnd: number }
+  | { kind: 'text_range'; start: number; end: number }
   | { kind: 'section'; headingPath: string[] }
   | { kind: 'verse'; work: string; book?: string; chapter?: string; verse: string }
   | { kind: 'commentary'; on: string; author?: string };
@@ -183,12 +184,14 @@ export const documentVersions = pgTable(
     byteSize: bigint('byte_size', { mode: 'number' }).notNull(),
     mimeType: text('mime_type').notNull(),
     originalFilename: text('original_filename'),
-    storageKey: text('storage_key').notNull().unique(),
+    // Content-addressed and therefore NOT unique: identical bytes under two sources share one blob.
+    storageKey: text('storage_key').notNull(),
     pageCount: integer('page_count'),
     extractedTitle: text('extracted_title'),
     detectedLanguage: text('detected_language'),
     detectedLanguageConfidence: real('detected_language_confidence'),
     extractionMeta: jsonb('extraction_meta').$type<Record<string, unknown>>(),
+    chunkingConfig: jsonb('chunking_config').$type<Record<string, unknown>>(),
     createdAt: createdAt(),
   },
   (t) => [
@@ -226,6 +229,15 @@ export const chunks = pgTable(
     pageStart: integer('page_start'),
     pageEnd: integer('page_end'),
     headingPath: text('heading_path').array().notNull().default(sql`'{}'::text[]`),
+    /** Ordinal section path derived from heading order, e.g. "2.1". Null before the first heading. */
+    sectionId: text('section_id'),
+    /** UTF-16 offsets of the containing blocks. For 'page_text' they are relative to the page's text. */
+    charStart: integer('char_start'),
+    charEnd: integer('char_end'),
+    offsetBasis: text('offset_basis').$type<'document_text' | 'page_text'>(),
+    extractionMethod: text('extraction_method').notNull(),
+    chunkerVersion: text('chunker_version').notNull(),
+    chunkingConfigHash: text('chunking_config_hash').notNull(),
     locator: jsonb('locator').$type<ChunkLocator>().notNull(),
     language: text('language'),
     // 'simple' config: no English stemming, so other languages are not mangled (risk R4).
@@ -242,6 +254,20 @@ export const chunks = pgTable(
     check('chunks_token_estimate_positive', sql`${t.tokenEstimate} > 0`),
     check('chunks_page_order', sql`${t.pageStart} is null or ${t.pageEnd} is null or ${t.pageEnd} >= ${t.pageStart}`),
     check('chunks_page_positive', sql`${t.pageStart} is null or ${t.pageStart} > 0`),
+    check(
+      'chunks_offsets_paired',
+      sql`(${t.charStart} is null) = (${t.charEnd} is null) and (${t.charStart} is null) = (${t.offsetBasis} is null)`,
+    ),
+    // For 'page_text' offsets, a chunk that spans pages starts on page N's text and ends on a LATER page's text,
+    // so its end offset may be smaller than its start offset. Within one page, or for 'document_text', end >= start.
+    check(
+      'chunks_offsets_valid',
+      sql`${t.charStart} is null or (${t.charStart} >= 0 and ${t.charEnd} >= 0 and (${t.charEnd} >= ${t.charStart} or (${t.offsetBasis} = 'page_text' and ${t.pageEnd} > ${t.pageStart})))`,
+    ),
+    check(
+      'chunks_offset_basis_valid',
+      sql`${t.offsetBasis} is null or ${t.offsetBasis} in ('document_text', 'page_text')`,
+    ),
   ],
 );
 

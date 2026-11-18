@@ -32,3 +32,21 @@ export function isUniqueViolation(error: unknown, constraint?: string): boolean 
   const info = getPgError(error);
   return info?.code === PG_UNIQUE_VIOLATION && (constraint === undefined || info.constraint === constraint);
 }
+
+/**
+ * A message that is safe to store and show: only the PostgreSQL error message (e.g. `new row for relation "chunks"
+ * violates check constraint "chunks_offsets_valid"`). Drizzle's own wrapper message embeds the full SQL and its bound
+ * parameters, which for chunk inserts is document content, so it must never be persisted or returned to clients.
+ * The row-level DETAIL line is deliberately excluded for the same reason.
+ */
+export function describeDatabaseError(error: unknown): string {
+  let current: unknown = error;
+  for (let depth = 0; depth < 5 && current && typeof current === 'object'; depth++) {
+    const candidate = current as { code?: unknown; message?: unknown; cause?: unknown };
+    if (typeof candidate.code === 'string' && /^[0-9A-Z]{5}$/.test(candidate.code) && typeof candidate.message === 'string') {
+      return `${candidate.message} (SQLSTATE ${candidate.code})`.slice(0, 500);
+    }
+    current = candidate.cause;
+  }
+  return 'database error';
+}

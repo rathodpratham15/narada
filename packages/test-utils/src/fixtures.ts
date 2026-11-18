@@ -88,6 +88,9 @@ export async function insertChunk(
       locator: { kind: 'page', page: 1 },
       pageStart: 1,
       pageEnd: 1,
+      extractionMethod: 'test@1',
+      chunkerVersion: 'test-chunker',
+      chunkingConfigHash: 'test-config',
       ...overrides,
     })
     .returning();

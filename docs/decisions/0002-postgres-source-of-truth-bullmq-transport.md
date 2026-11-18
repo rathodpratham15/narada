@@ -1,6 +1,6 @@
 # 0002 — PostgreSQL is the source of truth; BullMQ is transport
 
-Status: accepted
+Status: accepted. The queue part is amended by [0009](0009-postgres-claimed-job-queue.md): M2 claims jobs from PostgreSQL; BullMQ is deferred to M4 as a wake-up transport.
 
 **Decision.** Job state lives in `ingestion_jobs`. BullMQ delivers work, using the job row id as the BullMQ job id.
 A sweeper re-enqueues stale PENDING jobs and recovers PROCESSING jobs whose `heartbeat_at` is stale.

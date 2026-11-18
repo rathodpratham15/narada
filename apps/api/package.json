@@ -18,7 +18,10 @@
     "@narada/source-registry": "workspace:*",
     "fastify": "^5.12.8",
     "zod": "^4.6.7",
-    "drizzle-orm": "^0.45.4"
+    "drizzle-orm": "^0.45.4",
+    "@fastify/multipart": "^10.1.9",
+    "@narada/ingestion": "workspace:*",
+    "@narada/storage": "workspace:*"
   },
   "devDependencies": {
     "@narada/test-utils": "workspace:*"

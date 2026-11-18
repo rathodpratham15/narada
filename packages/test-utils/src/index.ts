@@ -2,6 +2,8 @@ import { createDatabase, runMigrations, type Database, type DatabaseHandle } fro
 import { sql } from 'drizzle-orm';
 
 export * from './fixtures';
+export * from './pdf-builder';
+export * from './helpers';
 
 export const DEFAULT_TEST_DATABASE_URL = 'postgres://narada:narada@localhost:5433/narada_test';
 

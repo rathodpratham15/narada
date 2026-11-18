@@ -10,6 +10,7 @@ import {
 import { eq, sql } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import {
+  type ChunkLocator,
   chunkEmbeddings,
   chunks,
   embeddingModels,
@@ -335,5 +336,82 @@ describe('ingestion_jobs constraints', () => {
       PG_CHECK_VIOLATION,
       'ingestion_jobs_stage_valid',
     );
+  });
+});
+
+describe('M2 provenance columns', () => {
+  it('allows identical bytes under two sources to share one storage key (blobs are content-addressed)', async () => {
+    const a = await insertDocumentTree(db);
+    const other = await insertSource(db);
+    const otherDoc = await insertDocument(db, other.id);
+    await expect(
+      insertVersion(db, otherDoc.id, other.id, { contentSha256: a.version.contentSha256, storageKey: a.version.storageKey }),
+    ).resolves.toBeDefined();
+  });
+
+  it('requires offsets to be both present or both absent, ordered, and paired with a basis', async () => {
+    const { parent } = await insertDocumentTree(db);
+    await expectPgError(
+      insertChunk(db, parent, { chunkIndex: 1, charStart: 5, charEnd: null, offsetBasis: 'document_text' }),
+      PG_CHECK_VIOLATION,
+      'chunks_offsets_paired',
+    );
+    await expectPgError(
+      insertChunk(db, parent, { chunkIndex: 2, charStart: 9, charEnd: 3, offsetBasis: 'document_text' }),
+      PG_CHECK_VIOLATION,
+      'chunks_offsets_valid',
+    );
+    await expectPgError(
+      insertChunk(db, parent, { chunkIndex: 3, charStart: 1, charEnd: 2, offsetBasis: null }),
+      PG_CHECK_VIOLATION,
+      'chunks_offsets_paired',
+    );
+    await expectPgError(
+      insertChunk(db, parent, { chunkIndex: 4, charStart: 1, charEnd: 2, offsetBasis: 'bytes' as never }),
+      PG_CHECK_VIOLATION,
+      'chunks_offset_basis_valid',
+    );
+    await expect(insertChunk(db, parent, { chunkIndex: 5, charStart: null, charEnd: null, offsetBasis: null })).resolves.toBeDefined();
+    await expect(insertChunk(db, parent, { chunkIndex: 6, charStart: 0, charEnd: 10, offsetBasis: 'page_text' })).resolves.toBeDefined();
+  });
+
+  it('lets a page-relative range end before it starts only when the chunk spans pages', async () => {
+    const { parent } = await insertDocumentTree(db);
+    // starts at 4000 on page 1, ends at 50 on page 2: legitimate for page_text offsets
+    await expect(
+      insertChunk(db, parent, { chunkIndex: 1, pageStart: 1, pageEnd: 2, charStart: 4000, charEnd: 50, offsetBasis: 'page_text' }),
+    ).resolves.toBeDefined();
+    // the same numbers within a single page are an error
+    await expectPgError(
+      insertChunk(db, parent, { chunkIndex: 2, pageStart: 3, pageEnd: 3, charStart: 4000, charEnd: 50, offsetBasis: 'page_text' }),
+      PG_CHECK_VIOLATION,
+      'chunks_offsets_valid',
+    );
+    // and document_text offsets are always ordered, whatever the pages
+    await expectPgError(
+      insertChunk(db, parent, { chunkIndex: 3, pageStart: 1, pageEnd: 2, charStart: 4000, charEnd: 50, offsetBasis: 'document_text' }),
+      PG_CHECK_VIOLATION,
+      'chunks_offsets_valid',
+    );
+  });
+
+  it('refuses chunks without extraction method, chunker version or configuration hash', async () => {
+    const { parent } = await insertDocumentTree(db);
+    for (const field of ['extractionMethod', 'chunkerVersion', 'chunkingConfigHash'] as const) {
+      await expectPgError(insertChunk(db, parent, { chunkIndex: 1, [field]: null as never }), '23502');
+    }
+  });
+
+  it('stores and returns text_range, page_range and section locators', async () => {
+    const { parent } = await insertDocumentTree(db);
+    const locators: ChunkLocator[] = [
+      { kind: 'text_range', start: 0, end: 9 },
+      { kind: 'page_range', pageStart: 1, pageEnd: 2 },
+      { kind: 'section', headingPath: ['A', 'B'] },
+    ];
+    for (const [i, locator] of locators.entries()) {
+      const row = await insertChunk(db, parent, { chunkIndex: i, locator });
+      expect(row.locator).toEqual(locator);
+    }
   });
 });

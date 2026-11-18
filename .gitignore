@@ -1,0 +1,11 @@
+node_modules/
+.turbo/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+.DS_Store
+# Local blob storage for original uploads (never commit ingested material)
+.data/
+*.log

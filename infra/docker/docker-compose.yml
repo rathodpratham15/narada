@@ -1,0 +1,36 @@
+name: narada
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.7-pg17
+    environment:
+      POSTGRES_USER: narada
+      POSTGRES_PASSWORD: narada
+      POSTGRES_DB: narada
+    ports:
+      - "${NARADA_PG_PORT:-5433}:5432"
+    volumes:
+      - narada_pgdata:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U narada -d narada"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${NARADA_REDIS_PORT:-6380}:6379"
+    volumes:
+      - narada_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  narada_pgdata:
+  narada_redisdata:

@@ -1,0 +1,26 @@
+{
+  "name": "@narada/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "@narada/config": "workspace:*",
+    "@narada/database": "workspace:*",
+    "@narada/shared": "workspace:*",
+    "@narada/source-registry": "workspace:*",
+    "fastify": "^5.12.8",
+    "zod": "^4.6.7",
+    "drizzle-orm": "^0.45.4"
+  },
+  "devDependencies": {
+    "@narada/test-utils": "workspace:*"
+  }
+}

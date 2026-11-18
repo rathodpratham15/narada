@@ -1,0 +1,10 @@
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import { fileURLToPath } from 'node:url';
+import type { Database } from './client';
+
+export const MIGRATIONS_FOLDER = fileURLToPath(new URL('../migrations', import.meta.url));
+
+/** Applies all pending migrations. Safe to call repeatedly. */
+export async function runMigrations(db: Database): Promise<void> {
+  await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
+}

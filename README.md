@@ -36,10 +36,10 @@ Override with `NARADA_PG_PORT` / `NARADA_REDIS_PORT` and update `.env` to match.
 
 ## Run the API
 
-The API reads configuration from the process environment (it does not load `.env` itself):
+The API and the migration command load the repository-root `.env` automatically. Variables already set in
+your shell take precedence over `.env`.
 
 ```bash
-set -a; source .env; set +a
 pnpm dev:api                # http://127.0.0.1:3000, logs are JSON on stdout
 ```
 

@@ -1,4 +1,4 @@
-import { ConfigError, loadApiConfig } from '@narada/config';
+import { ConfigError, loadApiConfig, loadDotEnv } from '@narada/config';
 import { createDatabase } from '@narada/database';
 import { createLogger } from '@narada/shared';
 import { buildApp } from './app';
@@ -6,6 +6,7 @@ import { buildApp } from './app';
 const SHUTDOWN_TIMEOUT_MS = 10_000;
 
 async function main(): Promise<void> {
+  loadDotEnv();
   let config;
   try {
     config = loadApiConfig();

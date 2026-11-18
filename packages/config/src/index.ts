@@ -1,4 +1,27 @@
+import { existsSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { z } from 'zod';
+
+/**
+ * Loads the repository-root `.env` into `process.env` for local development. Variables that are
+ * already set are never overwritten, so real environment configuration always wins. The search stops
+ * at the workspace root (the directory holding pnpm-workspace.yaml), so an unrelated `.env` in a
+ * parent directory is never picked up. Returns the loaded path, or null when there is none.
+ */
+export function loadDotEnv(startDir: string = process.cwd()): string | null {
+  let dir = resolve(startDir);
+  for (;;) {
+    if (existsSync(join(dir, 'pnpm-workspace.yaml'))) {
+      const file = join(dir, '.env');
+      if (!existsSync(file)) return null;
+      process.loadEnvFile(file);
+      return file;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
 
 /**
  * Environment validation. Every process calls one `load*Config` at boot and exits if it throws.

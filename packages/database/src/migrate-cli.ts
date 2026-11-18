@@ -1,8 +1,9 @@
-import { ConfigError, loadDatabaseConfig } from '@narada/config';
+import { ConfigError, loadDatabaseConfig, loadDotEnv } from '@narada/config';
 import { createDatabase } from './client';
 import { runMigrations } from './migrate';
 
 async function main(): Promise<void> {
+  loadDotEnv();
   const config = loadDatabaseConfig();
   const handle = createDatabase(config.DATABASE_URL, { max: 1 });
   try {
